@@ -1,0 +1,3 @@
+[submodule "Book-Mathematical-Foundation-of-Reinforcement-Learning"]
+	path = Book-Mathematical-Foundation-of-Reinforcement-Learning
+	url = https://github.com/MathFoundationRL/Book-Mathematical-Foundation-of-Reinforcement-Learning.git
