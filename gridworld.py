@@ -173,7 +173,6 @@ class GridWorld:
         plt.pause(animation_interval)
 
     def add_policy(self, policy_matrix):                  
-
         for state, state_action_group in enumerate(policy_matrix):    
             x = state % self.env_size[0]
             y = state // self.env_size[0]
@@ -195,3 +194,99 @@ class GridWorld:
     def show(self):
         plt.ioff()
         plt.show()
+
+
+## YYF edit
+    def greedy_2_matrix(self, greedy : np.ndarray):
+        policy_matrix = np.zeros((self.num_states,len(self.action_space)))
+        for i,r in enumerate(greedy):
+            policy_matrix[i][r] = 1
+        return policy_matrix
+    
+    def tuple_2_index(self, state):
+        x,y = state
+        return self.env_size[0]*y + x
+    
+    def index_2_tuple(self, index):
+        x = index % self.env_size[0]
+        y = index // self.env_size[0]
+        return (x,y)
+    
+    def get_next_state(self, state: tuple, action: tuple):
+        x,y = state
+        reward = 0
+
+        new_state = tuple(np.array(state)+ np.array(action))
+
+        if action == (1, 0) and x + 1 >= self.env_size[0]:
+            x = self.env_size[0] - 1
+            reward = self.reward_forbidden
+        elif action == (-1, 0) and x - 1 < 0:
+            x = 0
+            reward = self.reward_forbidden
+        elif action == (0, 1) and y + 1 >= self.env_size[1]:
+            y = self.env_size[1] - 1
+            reward = self.reward_forbidden
+        elif action == (0, -1) and y - 1 < 0:
+            y = 0
+            reward = self.reward_forbidden
+        elif new_state in self.forbidden_states:
+            x,y = state
+            reward = self.reward_forbidden
+        elif  new_state == self.target_state:
+            x,y = new_state 
+            reward = self.reward_target
+        else:
+            x,y = new_state
+            reward = self.reward_step
+        return (x,y), reward
+
+    
+    def policy_2_P_pi(self, policy:np.ndarray):
+
+        P_pi = np.zeros((self.num_states, self.num_states))
+
+        for state_index, action_space_set in enumerate(policy):
+            for i, action_probability  in enumerate(action_space_set):
+
+                state_tuple = self.index_2_tuple(state_index)
+                Nstate, _ = self.get_next_state(state_tuple,self.action_space[i])
+                Nstate_index = self.tuple_2_index(Nstate)
+                P_pi[state_index][Nstate_index] = action_probability 
+
+        return P_pi
+
+    def get_reward_matix(self):
+        r_pi = np.zeros((self.num_states,len(self.action_space)))
+
+        for state_index in len(self.num_states):
+            for action_index in range(len(self.action_space)):
+                state_tuple = self.index_2_tuple(state_index)
+                _, r = self.get_next_state(state_tuple, self.action_space[action_index])
+                r_pi[state_index][action_index] = r
+        return r_pi
+    
+    def get_policy_reward(self, policy:np.ndarray):
+        r_pi = np.zeros((self.num_states,1))
+        
+        for state_index, action_space_set in enumerate(policy):
+            max_index = np.argmax(action_space_set)
+            state_tuple = self.index_2_tuple(state_index)
+            _,r = self.get_next_state(state_tuple,self.action_space[max_index])
+            r_pi[state_index] = r
+        return r_pi
+
+
+    def bellman_equ_solver(self, P_pi, r, v = None, gamma = 0.9,t = int(1e6), allo_error = 1e-6):
+        if v == None :
+            v = np.ones((self.num_states,1))
+        
+        for i in range(t):
+            v_ = r+gamma*P_pi@v
+
+            if np.linalg.norm(v_-v) < allo_error :
+                break
+                
+            v = v_
+
+        return v_
