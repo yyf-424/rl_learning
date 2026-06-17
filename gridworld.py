@@ -180,7 +180,7 @@ class GridWorld:
                 if action_probability !=0:
                     dx, dy = self.action_space[i]
                     if (dx, dy) != (0,0):
-                        self.ax.add_patch(patches.FancyArrow(x, y, dx=(0.1+action_probability/2)*dx, dy=(0.1+action_probability/2)*dy, color=self.color_policy, width=0.001, head_width=0.05))
+                        self.ax.add_patch(patches.FancyArrow(x, y, dx=(0.1+action_probability)/3*dx, dy=(0.1+action_probability)/3*dy, color=self.color_policy, width=0.001, head_width=0.05))
                     else:
                         self.ax.add_patch(patches.Circle((x, y), radius=0.07, facecolor=self.color_policy, edgecolor=self.color_policy, linewidth=1, fill=False))
     
@@ -231,7 +231,8 @@ class GridWorld:
             y = 0
             reward = self.reward_forbidden
         elif new_state in self.forbidden_states:
-            x,y = state
+            x,y = new_state #让进
+            # x,y = state #不让进
             reward = self.reward_forbidden
         elif  new_state == self.target_state:
             x,y = new_state 
@@ -248,12 +249,14 @@ class GridWorld:
 
         for state_index, action_space_set in enumerate(policy):
             for i, action_probability  in enumerate(action_space_set):
+                if action_probability == 0 :
+                    continue
 
                 state_tuple = self.index_2_tuple(state_index)
                 Nstate, _ = self.get_next_state(state_tuple,self.action_space[i])
                 Nstate_index = self.tuple_2_index(Nstate)
                 P_pi[state_index][Nstate_index] = action_probability 
-
+        print(P_pi)
         return P_pi
 
     def get_reward_matix(self):
