@@ -72,7 +72,7 @@ class GridWorld:
             y = 0
             reward = self.reward_forbidden
         elif new_state in self.forbidden_states:
-            x,y = state
+            x,y = new_state 
             reward = self.reward_forbidden
         elif  new_state == self.target_state:
             x,y = new_state 
@@ -200,7 +200,7 @@ class GridWorld:
     def greedy_2_matrix(self, greedy : np.ndarray):
         policy_matrix = np.zeros((self.num_states,len(self.action_space)))
         for i,r in enumerate(greedy):
-            policy_matrix[i][r] = 1
+            policy_matrix[i][int(r)] = 1
         return policy_matrix
     
     def tuple_2_index(self, state):
@@ -241,7 +241,20 @@ class GridWorld:
             reward = self.reward_step
         return (x,y), reward
 
-    
+    def get_p_s(self):
+        p_s = np.zeros((self.num_states, len(self.action_space), self.num_states, 2))
+        #第一维度是state，第二维度是action,第三维度是next state ，第四维度是1是reward 0是概率
+
+        for state_index in range(self.num_states):
+            for action_index in range(len(self.action_space)):
+                state_tuple = self.index_2_tuple(state_index)
+                Nstate, r = self.get_next_state_and_reward(state_tuple, self.action_space[action_index])
+                Nstate_index = self.tuple_2_index(Nstate)
+                p_s[state_index][action_index][Nstate_index][0] = 1
+                p_s[state_index][action_index][Nstate_index][1] = r
+
+        return p_s
+
     def policy_2_P_pi(self, policy:np.ndarray):
 
         P_pi = np.zeros((self.num_states, self.num_states))
@@ -276,7 +289,6 @@ class GridWorld:
             r_pi[state_index] = r
         return r_pi
 
-
     def bellman_equ_solver(self, P_pi, r, v = None, gamma = 0.9,t = int(1e6), allo_error = 1e-6):
         if v == None :
             v = np.ones((self.num_states,1))
@@ -287,6 +299,31 @@ class GridWorld:
             if np.linalg.norm(v_-v) < allo_error :
                 break
                 
-            v = v_
+            v = v_.copy()
 
         return v_
+
+    def value_iteration(self, p_s, v = None, gamma = 0.9,t = int(1e6), allo_error = 1e-6):
+        if v == None :
+            v = np.ones((self.num_states,1))
+        v = v.flatten()
+
+        v_ = v.copy()
+        q_k = np.zeros((self.num_states,len(self.action_space)))
+        greedy_policy = np.zeros((self.num_states,1))
+        greedy_policy = greedy_policy.flatten()
+
+        for i in range(t):
+            for state_index in range(self.num_states):
+                for action_index in range(len(self.action_space)):
+                    q_k[state_index][action_index] = p_s[state_index][action_index][:,0]@(p_s[state_index][action_index][:,1]+gamma*v)
+            
+                greedy_policy[state_index] = np.argmax(q_k[state_index])
+            policy_matrix = self.greedy_2_matrix(greedy_policy)
+            for state_index in range(self.num_states):
+                v[state_index] = np.max(q_k[state_index])
+
+            if np.linalg.norm(v-v_) < allo_error:
+                break
+            v_ = v.copy()
+        return policy_matrix

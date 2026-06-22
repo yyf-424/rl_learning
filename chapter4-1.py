@@ -23,8 +23,10 @@ policy_matrix /= policy_matrix.sum(axis=1)[:, np.newaxis] #初始化策略矩阵
 
 values = np.random.uniform(0,10,(env.num_states,)) #初始化状态值矩阵
 
+p_s = env.get_p_s()
+policy_matrix = env.value_iteration(p_s)
 
+env.add_policy(policy_matrix)
 
-
-
+env.render(animation_interval=2)
 env.show()
