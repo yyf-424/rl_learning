@@ -231,8 +231,7 @@ class GridWorld:
             y = 0
             reward = self.reward_forbidden
         elif new_state in self.forbidden_states:
-            x,y = new_state #让进
-            # x,y = state #不让进
+            x,y = state
             reward = self.reward_forbidden
         elif  new_state == self.target_state:
             x,y = new_state 
@@ -249,8 +248,6 @@ class GridWorld:
 
         for state_index, action_space_set in enumerate(policy):
             for i, action_probability  in enumerate(action_space_set):
-                if action_probability == 0 :
-                    continue
 
                 state_tuple = self.index_2_tuple(state_index)
                 Nstate, _ = self.get_next_state(state_tuple,self.action_space[i])

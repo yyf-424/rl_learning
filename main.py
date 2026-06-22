@@ -14,26 +14,28 @@ advance_setting = {"action_space" : [(0, 1), (1, 0), (0, -1), (-1, 0), (0, 0)],#
                    "animation_interval" : 0.2,
                    "debug" : False}
 
+
+
 if __name__ == "__main__":
     env = gridworld.GridWorld(base_setting, advance_setting)
     state = env.reset()
 
-    for i in range(0,1000):
+    policy_matrix=np.random.rand(env.num_states,len(env.action_space))    
+    policy_matrix /= policy_matrix.sum(axis=1)[:, np.newaxis]  #初始化策略矩阵
+
+    values = np.random.uniform(0,10,(env.num_states,)) #初始化状态值矩阵
+
+    for i in range(0,100):
         env.render()
         action = random.choice(advance_setting["action_space"])
         next_state, reward, done, info = env.step(action)
-        print(f"Step: {i}, Action: {action}, State: {next_state+(np.array([1,1]))}, Reward: {reward}, Done: {done}")
-        if done:
-            print("!!!!!")
-
-    policy_matrix=np.random.rand(env.num_states,len(env.action_space))                                            
-    policy_matrix /= policy_matrix.sum(axis=1)[:, np.newaxis]  # make the sum of elements in each row to be 1
+        #print(f"Step: {i}, Action: {action}, State: {next_state+(np.array([1,1]))}, Reward: {reward}, Done: {done}")
+        #if done:
+        #    print("!!!!!")
 
     env.add_policy(policy_matrix)
 
-    
     # Add state values
-    values = np.random.uniform(0,10,(env.num_states,))
     env.add_state_values(values)
 
     # Render the environment
