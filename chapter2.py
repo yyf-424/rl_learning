@@ -7,6 +7,7 @@ base_setting = {"env_size" : (5,5),
              "forbidden_states" : [(1, 1), (2, 1), (2,2),(1,3),(3,3),(1,4)],
              "reward_target" : 1.0,
              "reward_forbidden" : -1.0,
+             "reward_boundary" : -1.0,
              "reward_step" : 0.0}
 
 advance_setting = {"action_space" : [(0, 1), (1, 0), (0, -1), (-1, 0), (0, 0)],#下，右，上，左，不动

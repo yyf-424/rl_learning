@@ -19,6 +19,7 @@ class GridWorld:
         self.action_space = advance_setting["action_space"]
         self.reward_target = base_setting["reward_target"]
         self.reward_forbidden = base_setting["reward_forbidden"]
+        self.reward_boundary = base_setting["reward_boundary"]
         self.reward_step = base_setting["reward_step"]
 
         self.canvas = None
@@ -61,16 +62,16 @@ class GridWorld:
 
         if action == (1, 0) and x + 1 >= self.env_size[0]:
             x = self.env_size[0] - 1
-            reward = self.reward_forbidden
+            reward = self.reward_boundary
         elif action == (-1, 0) and x - 1 < 0:
             x = 0
-            reward = self.reward_forbidden
+            reward = self.reward_boundary
         elif action == (0, 1) and y + 1 >= self.env_size[1]:
             y = self.env_size[1] - 1
-            reward = self.reward_forbidden
+            reward = self.reward_boundary
         elif action == (0, -1) and y - 1 < 0:
             y = 0
-            reward = self.reward_forbidden
+            reward = self.reward_boundary
         elif new_state in self.forbidden_states:
             x,y = new_state 
             reward = self.reward_forbidden
@@ -198,12 +199,26 @@ class GridWorld:
 
 ## YYF edit
     def greedy_2_matrix(self, greedy : np.ndarray):
+        #greedy policy to full policy matrix
+        #greedy policy is a vector of action index for each state
         policy_matrix = np.zeros((self.num_states,len(self.action_space)))
         for i,r in enumerate(greedy):
             policy_matrix[i][int(r)] = 1
         return policy_matrix
     
+    def greedy_2_epsilon_matrix(self, greedy : np.ndarray, epsilon : float):
+        #greedy policy to full policy matrix
+        #greedy policy is a vector of action index for each state
+        policy_matrix = np.zeros((self.num_states,len(self.action_space)))
+        policy_matrix += (epsilon/(len(self.action_space)))
+
+        for i,r in enumerate(greedy):
+            policy_matrix[i][int(r)] = 1 - epsilon + epsilon/(len(self.action_space))
+        
+        return policy_matrix
+    
     def tuple_2_index(self, state):
+
         x,y = state
         return self.env_size[0]*y + x
     
@@ -220,18 +235,18 @@ class GridWorld:
 
         if action == (1, 0) and x + 1 >= self.env_size[0]:
             x = self.env_size[0] - 1
-            reward = self.reward_forbidden
+            reward = self.reward_boundary
         elif action == (-1, 0) and x - 1 < 0:
             x = 0
-            reward = self.reward_forbidden
+            reward = self.reward_boundary
         elif action == (0, 1) and y + 1 >= self.env_size[1]:
             y = self.env_size[1] - 1
-            reward = self.reward_forbidden
+            reward = self.reward_boundary
         elif action == (0, -1) and y - 1 < 0:
             y = 0
-            reward = self.reward_forbidden
+            reward = self.reward_boundary
         elif new_state in self.forbidden_states:
-            x,y = state
+            x,y = new_state 
             reward = self.reward_forbidden
         elif  new_state == self.target_state:
             x,y = new_state 
@@ -242,6 +257,7 @@ class GridWorld:
         return (x,y), reward
 
     def get_p_s(self):
+        #P(s)包括P（r|s,a), P(s'|s,a)
         p_s = np.zeros((self.num_states, len(self.action_space), self.num_states, 2))
         #第一维度是state，第二维度是action,第三维度是next state ，第四维度是1是reward 0是概率
 
@@ -256,7 +272,7 @@ class GridWorld:
         return p_s
 
     def policy_2_P_pi(self, policy:np.ndarray):
-
+        #policy matrix to P_pi，策略到状态转移矩阵
         P_pi = np.zeros((self.num_states, self.num_states))
 
         for state_index, action_space_set in enumerate(policy):
@@ -269,10 +285,11 @@ class GridWorld:
         print(P_pi)
         return P_pi
 
-    def get_reward_matix(self):
+    def get_reward_matrix(self):
+        #s和a对应的reward矩阵
         r_pi = np.zeros((self.num_states,len(self.action_space)))
 
-        for state_index in len(self.num_states):
+        for state_index in range(self.num_states):
             for action_index in range(len(self.action_space)):
                 state_tuple = self.index_2_tuple(state_index)
                 _, r = self.get_next_state(state_tuple, self.action_space[action_index])
@@ -302,7 +319,7 @@ class GridWorld:
             v = v_.copy()
 
         return v_
-
+    
     def value_iteration(self, p_s, v = None, gamma = 0.9,t = int(1e6), allo_error = 1e-6):
         if v == None :
             v = np.ones((self.num_states,1))
@@ -326,4 +343,80 @@ class GridWorld:
             if np.linalg.norm(v-v_) < allo_error:
                 break
             v_ = v.copy()
+        return policy_matrix
+    
+    def policy_iteration(self,p_s, gamma = 0.9, t = int(1e6), allo_error = 1e-6, v = None):
+        if v == None :
+            v = np.ones(self.num_states)
+        v = v.flatten()
+        v_ = v.copy()
+
+        greedy_policy = np.zeros((self.num_states,1))
+        greedy_policy = greedy_policy.flatten()
+        greedy_policy_ = greedy_policy.copy()
+        policy_matrix = self.greedy_2_matrix(greedy_policy)
+
+        q_k = np.zeros((self.num_states,len(self.action_space)))
+
+        for i in range(t):
+            for j in range(t):
+                for state_index in range(self.num_states):
+                    for action_index in range(len(self.action_space)):
+                        q_k[state_index][action_index] = p_s[state_index][action_index][:,0]@(p_s[state_index][action_index][:,1]+gamma*v)
+                    v_[state_index] = policy_matrix[state_index] @ q_k[state_index].reshape(-1,1)
+                if np.linalg.norm(v-v_) < allo_error:
+                    break
+                v = v_.copy()
+
+            for state_index in range(self.num_states):
+                greedy_policy[state_index] = np.argmax(q_k[state_index])
+            policy_matrix = self.greedy_2_matrix(greedy_policy)
+            if np.array_equal(greedy_policy,greedy_policy_):
+                break
+            greedy_policy_ = greedy_policy.copy()
+
+        return policy_matrix,v
+
+    def mc_basic(self,gamma = 0.9, t_episode = int(200), t_iteration = int(1e6)):
+        greedy_policy = np.zeros(self.num_states)
+        greedy_policy_ = greedy_policy.copy()
+        policy_matrix = self.greedy_2_epsilon_matrix(greedy_policy, epsilon=1.0)
+
+        mc = np.zeros((self.num_states,len(self.action_space),2)) #第一维度是state，第二维度是action,第三维度是0是访问次数，1是qk(s,a)
+
+        for i in range(t_iteration):
+            traj = []
+            state = np.random.choice(self.num_states)
+            state = self.index_2_tuple(state)
+
+            for j in range(t_episode):
+                state_index = self.tuple_2_index(state)
+                action_index = np.random.choice(len(self.action_space),size=None,replace=True,p=policy_matrix[state_index])
+                nstate_tuple,reward = self.get_next_state(state,self.action_space[action_index])
+                nstate_index = self.tuple_2_index(nstate_tuple)
+                traj.append((state_index, action_index, reward, nstate_index))
+                #print(f"Step: {j}, Action: {self.action_space[action_index]}, State: {nstate_tuple}, Reward: {reward}")
+                state = nstate_tuple
+                if self._is_done(state):
+                    break
+            
+            g = 0
+            for j in range(len(traj)-1,-1,-1):
+                s,a,r,ns = traj[j]
+                g = r+gamma*g
+                mc[s][a][0]+=1
+                mc[s][a][1] = mc[s][a][1]+1/mc[s][a][0]*(g-mc[s][a][1])
+            
+            for state_index in range(self.num_states):
+                #greedy_policy[state_index] = np.argmax(mc[state_index,:,1])3
+                visited = mc[state_index, :, 0] > 0
+                if np.any(visited):
+                    q = np.full(len(self.action_space), -np.inf)
+                    q[visited] = mc[state_index, visited, 1]
+                    greedy_policy[state_index] = np.argmax(q)
+
+            greedy_policy_ = greedy_policy.copy()
+            policy_matrix = self.greedy_2_epsilon_matrix(greedy_policy, epsilon=max(0.05,1.0/(np.sqrt(i+1))))
+
+        print(mc)
         return policy_matrix

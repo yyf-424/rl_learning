@@ -17,7 +17,7 @@ env = gridworld.GridWorld(base_setting ,advance_setting )
 state, info = env.reset() # 初始化绘图
 env.render()
 
-
+#page 60  value iteration
 policy_matrix=np.random.rand(env.num_states,len(env.action_space))                                            
 policy_matrix /= policy_matrix.sum(axis=1)[:, np.newaxis] #初始化策略矩阵
 
